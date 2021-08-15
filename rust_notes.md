@@ -40,7 +40,7 @@
   	.yet_another_fn();
   ```
 
-
+- For function signatures that take strings or other array-like values, prefer to use slices. 
 
 ## Commands
 
@@ -309,3 +309,29 @@ let mut greeting = "hello";
 greeting = greeting.len(); // Throws an error
 ```
 
+### Slices
+
+Work similarly to slices in Golang. 
+
+References part of a string
+
+`&my_str[5..12] // slice from index 5 through 11 `
+
+`&my_str[..12] // slice from beginning of string through index 11`
+
+`&my_str[5..] // slice from index 5 through end of string`
+
+`&my_str[..] // slice of entire string`
+
+You can also use variables for the bounds:
+
+```rust
+let my_str = String::from("Hello, slices!");
+let len = my_str.len();
+
+let slice = &my_str[7..len]; // slice containing "slices!"
+```
+
+String literals are slices. String literal type keyword is `str`, so a function can receive/return a slice by using the syntax `&str`.
+
+Slice definitions for other types look like `&[u32]`, `&[bool]`, etc.
