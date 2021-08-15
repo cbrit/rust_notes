@@ -20,6 +20,8 @@
 
 *Library crate* - A Crate that contains components that can be used in other projects. Has no `main()` function entry point.
 
+*Method* - A function defined inside of a struct, enum, or trait. First parameter is always `self`. Methods can borrow or take ownership like normal functions.
+
 *Shadowing* - Using and existing variables name for a new variable of either the same or a different type. Useful for situations where you would normally cast.
 
 *Statement* - Returns no value
@@ -116,7 +118,7 @@ fn my_fn(my_param: u32) -> u32 {
 
 Pass argument by reference uses `&` prefix.
 
-Immutable argument can be made mutable in the context of the function it is passed to by prefixing `mut`. This line passes a variable guess by reference and makes it mutable:
+Immutable argument can be made mutable in the context of the function it is passed to by prefixing `mut`. This line passes a variable `input_str` by reference and makes it mutable:
 
 ```rust
 io::stdin()
@@ -335,3 +337,100 @@ let slice = &my_str[7..len]; // slice containing "slices!"
 String literals are slices. String literal type keyword is `str`, so a function can receive/return a slice by using the syntax `&str`.
 
 Slice definitions for other types look like `&[u32]`, `&[bool]`, etc.
+
+### Structs
+
+Like structs in other languages.
+
+Each struct defined is its own type.
+
+Defining:
+
+```rust
+struct MyStruct {
+	name: String,
+	email: String,
+	age: u32,
+};
+```
+
+Instantiating:
+
+```rust
+let mut instance = MyStruct {
+	name: String::from("Collin"),
+	email: String::fromt("someemail@gmail.com"),
+	age: 100,
+};
+```
+
+Accessing:
+
+```rust
+println!("Hello, {}!", instance.name);
+
+instance.age = instance.age + 1; // This will throw a compiler error if instance is not mutable
+```
+
+Entire instance must be mutable or immutable. You cannot mark only certain fields as mutable.
+
+Shorthand for auto-filling fields with matching function parameters:
+
+```rust
+fn build_user(email: String, username: String) -> User {
+    User {
+        email, 		// Field and parameter have same name
+        username,	// Field and parameter have same name
+        active: true,
+        sign_in_count: 1,
+    }
+}
+```
+
+"Update syntax", copy fields from another struct 
+
+```rust
+let user2 = User {
+	email: String::from("another@example.com"),
+	username: String::from("anotherusername567"),
+	..user1	// Remaining fields will have the same values as those in user1
+};
+```
+
+#### Structs: Methods
+
+Methods can be defined on structs with the `impl` ("implements") block. Methods take `self` as their first argument. Borrowing and ownership work as normal. Methods are called with dot syntax:
+
+```rust
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+}
+
+// Given a Rectangle rect, area method can be called with rect.area();
+```
+
+#### Structs: Associated Functions
+
+Associated functions are functions in a struct that do not take the `self` parameter, and therefore do not have an instance of the caller scoped. They are called with the double colon `::` syntax:
+
+```rust
+impl Rectangle {
+    fn square(size: u32) -> Rectangle {
+        Rectangle {
+            width: size,
+            height: size,
+        }
+    }
+}
+
+// Called with Rectangle::square(5)
+```
+
+Associated functions are often used as constructors that return a new instance of a the struct. The previous example creates a new Rectangle with equal width and height.
