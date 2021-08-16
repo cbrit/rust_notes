@@ -1,3 +1,7 @@
+## Contributing
+
+If you are interested in contributing to this post, it's in a public repository in [my GitHub](https://github.com/cbrit/rust_notes/tree/main). If you do decide to contribute, keep in mind this is supposed to be a concise summary and reference, and it is not a rewrite of the Rust Book. Thanks!
+
 ## Resources
 
 [The Rust Programming Language — The Rust Programming Language (rust-lang.org)](https://doc.rust-lang.org/book/)
@@ -43,6 +47,7 @@
   ```
 
 - For function signatures that take strings or other array-like values, prefer to use slices. 
+- Prefer slicing a string over indexing into it. See [Slicing Strings](https://doc.rust-lang.org/book/ch08-02-strings.html#slicing-strings) in the Rust Book for an explanation.
 
 ## Commands
 
@@ -462,6 +467,8 @@ Strings
 
 - A string is a collection of bytes, therefore it falls under this category
 
+  In fact, is a wrapper of a `Vec<u8>`, and as such can be indexed like a normal vector.
+
 - Remember that a string literal is a slice, not a `String`. These are equivalent:
 
   ```rust
@@ -483,9 +490,55 @@ Strings
 
   The `add` method signature is `fn add(self, s: &str) -> String`
 
+- The `format!` macro can be used to format a string:
 
+  ```rust
+  let s1 = String::from("Hello");
+  let s2 = String::from(", World!");
+  let s3 = format!("{}{}", s1, s2);
+  ```
+
+  
 
 Hash Maps
+
+- A familiar data structure known by other names such as map or dictionary.
+
+  ```rust
+  // Include
+  use std::collections::HashMap;
+  
+  // Initializing
+  let mut hm = HashMap::new();
+  
+  // Add pairs
+  hm.insert(String::from("Username"), String::from("atrooo"));
+  ```
+
+- All keys must be of the same types, as well as all values. In the previous code block, Rust infers that the type is `HashMap<String, String>`. It could have just as easily been `HashMap<i32, bool>`.
+
+  It can be explicitly defined when initializing, just like any other type:
+
+  ```rust
+  let mut hm: HashMap<String, i32> = HashMap::new();
+  ```
+
+- Hash maps take ownership of values inserted into them.
+
+- Accessing:
+
+  ```rust
+  // Get method
+  let key = String::from("Username");
+  let int: i32 = hm.get(&key);
+  
+  // Or iterate with tuple
+  for (key, value) in &hm {
+  	println!("{}: {}", key, value); // Username: atrooo
+  }
+  ```
+
+  
 
 ### Macros
 
