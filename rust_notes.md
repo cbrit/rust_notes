@@ -1,5 +1,3 @@
-# Rust Notes
-
 ## Resources
 
 [The Rust Programming Language — The Rust Programming Language (rust-lang.org)](https://doc.rust-lang.org/book/)
@@ -14,13 +12,15 @@
 
 *Borrow* - When a function is passed a value by reference. Ownership is not taken, and the value cannot be changed unless the parameter is `&mut`.
 
-*Crate* - A rust package/library
+*Crate* - A tree of modules that produces a library or executable.
 
 *Expression* - Evaluates to/returns a value
 
 *Library crate* - A Crate that contains components that can be used in other projects. Has no `main()` function entry point.
 
 *Method* - A function defined inside of a struct, enum, or trait. First parameter is always `self`. Methods can borrow or take ownership like normal functions.
+
+*Module*s - Let you control the organization, scope, and privacy of paths. Included using `use`
 
 *Shadowing* - Using and existing variables name for a new variable of either the same or a different type. Useful for situations where you would normally cast.
 
@@ -133,6 +133,81 @@ Values are called *variants*
 
 Common enum `Result` is used for indicating success/failure (`Ok`) and capturing errors (`Err`) for handling
 
+Defined as follows:
+
+```rust
+enum MyEnum {
+	Variant1,
+	Varient2,
+};
+```
+
+Can be combined with structs to store data with meaingful descriptions in the type name
+
+```rust
+enum IpAddrKind {
+    V4,
+    V6,
+}
+
+struct IpAddr {
+    kind: IpAddrKind,
+    address: String,
+}
+
+let home = IpAddr {
+    kind: IpAddrKind::V4,
+    address: String::from("127.0.0.1"),
+};
+```
+
+Rust provides a short hand for the previous patter, allowing define data excepted directly in the variant definition:
+
+```rust
+enum IpAddr {
+    V4(String),
+    V6(String),
+}
+
+let home = IpAddr::V4(String::from("127.0.0.1"));
+```
+
+The previous two blocks of code result in the same data structure in the `home` variable.
+
+Additionally, each variant can accept different types and amount of data
+
+```rust
+enum IpAddr {
+    V4(u8, u8, u8, u8),
+    V6(String),
+}
+
+let home = IpAddr::V4(127, 0, 0, 1);
+
+let loopback = IpAddr::V6(String::from("::1"));
+```
+
+The advantage of using an `enum` is a better UX when writing data structures and easier to read code. If you had two write two structs `V4` and `V6`, you would then need separate function signatures for each type. 
+
+Just like structs, enums can have methods and associated functions.
+
+##### Special enum: Option<T>
+
+In place of the concept of null and not-null values, Rust uses the `Option<T>` enum to represent a value that can be either present or not present. It's defined in the standard library as 
+
+```rust
+enum Option<T> {
+    Some(T),
+    None,
+}
+```
+
+You can use its variant Some and None without the `Option::` prefix. 
+
+The type passed to the generic type parameter `<T>` means that `Some` can hold any type.
+
+By doing this, rather than allowing each variable to have a `null` state, the compiler can treat variables that have the potential to not be present as different than the regular type. Additionally, the compiler will force the user to handle every variant in the Options before compiling. This prevents attempts to execute code on a missing value.
+
 ### Expressions
 
 `loop {}`
@@ -170,6 +245,37 @@ Common enum `Result` is used for indicating success/failure (`Ok`) and capturing
   };
   ```
 
+- Matches are exhaustive. If there is a variant unhandled, the compiler will throw an error.
+- Use the `_` placeholder variant to handle unlisted variants. Sort of like a `default` block in a switch statement. Matches any value.
+- Patterns are matched in the order they are written. Placing `_` as the first arm would match all inputs.
+
+`if let` 
+
+- Syntactic sugar for unexhaustive matching
+
+- These are equivalent:
+
+  ```rust
+  let some_u8_value = Some(0u8);
+  
+  match some_u8_value {
+      Some(3) => println!("three"),
+      _ => (),
+  }
+  ```
+
+  ```rust
+  let some_u8_value = Some(0u8);
+  
+  if let Some(u8) = some_u8_value {
+      println!("three");
+  }
+  
+  // If some_u8_value were None, nothing would happen.
+  ```
+
+- You can follow and `if let` with an `else` block.
+
 Number **ranges** 
 
 - Expressed as `x..y`, where x is the inclusive lower bound, and y is the exclusive upper bound.
@@ -184,7 +290,202 @@ Variables
   }
   ```
 
+
+
+### Slices
+
+Work similarly to slices in Golang. 
+
+References part of a string
+
+`&my_str[5..12] // slice from index 5 through 11 `
+
+`&my_str[..12] // slice from beginning of string through index 11`
+
+`&my_str[5..] // slice from index 5 through end of string`
+
+`&my_str[..] // slice of entire string`
+
+You can also use variables for the bounds:
+
+```rust
+let my_str = String::from("Hello, slices!");
+let len = my_str.len();
+
+let slice = &my_str[7..len]; // slice containing "slices!"
+```
+
+String literals are slices. String literal type keyword is `str`, so a function can receive/return a slice by using the syntax `&str`.
+
+Slice definitions for other types look like `&[u32]`, `&[bool]`, etc.
+
+### Structs
+
+Like structs in other languages.
+
+Each struct defined is its own type.
+
+Defining:
+
+```rust
+struct MyStruct {
+	name: String,
+	email: String,
+	age: u32,
+};
+```
+
+Instantiating:
+
+```rust
+let mut instance = MyStruct {
+	name: String::from("Collin"),
+	email: String::fromt("someemail@gmail.com"),
+	age: 100,
+};
+```
+
+Accessing:
+
+```rust
+println!("Hello, {}!", instance.name);
+
+instance.age = instance.age + 1; // This will throw a compiler error if instance is not mutable
+```
+
+Entire instance must be mutable or immutable. You cannot mark only certain fields as mutable.
+
+Shorthand for auto-filling fields with matching function parameters:
+
+```rust
+fn build_user(email: String, username: String) -> User {
+    User {
+        email, 		// Field and parameter have same name
+        username,	// Field and parameter have same name
+        active: true,
+        sign_in_count: 1,
+    }
+}
+```
+
+"Update syntax", copy fields from another struct 
+
+```rust
+let user2 = User {
+	email: String::from("another@example.com"),
+	username: String::from("anotherusername567"),
+	..user1	// Remaining fields will have the same values as those in user1
+};
+```
+
+#### Structs: Methods
+
+Methods can be defined on structs with the `impl` ("implements") block. Methods take `self` as their first argument. Borrowing and ownership work as normal. Methods are called with dot syntax:
+
+```rust
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+}
+
+// Given a Rectangle rect, area method can be called with rect.area();
+```
+
+#### Structs: Associated Functions
+
+Associated functions are functions in a struct that do not take the `self` parameter, and therefore do not have an instance of the caller scoped. They are called with the double colon `::` syntax:
+
+```rust
+impl Rectangle {
+    fn square(size: u32) -> Rectangle {
+        Rectangle {
+            width: size,
+            height: size,
+        }
+    }
+}
+
+// Called with Rectangle::square(5)
+```
+
+Associated functions are often used as constructors that return a new instance of a the struct. The previous example creates a new Rectangle with equal width and height.
+
+### Collections
+
+Vectors `Vec<T>`
+
+- A list of values of the **same type** stored next to each other in memory.
+
+- Instantiated with `let v: Vec<i32> = Vec::new();`
+
+- Rust can also infer the type during definition with the vec macro: `let v = vec![1, 2, 3];`
+
+- Append values to vectors with the push method: `v.push(5);`. The vector must be mutable to do this.
+
+- For reading, indexing can cause a panic if the index is out of range, or you can use the `get` method which returns an `Option`
+
+  ```rust
+  let v = vec![1, 2, 3, 4, 5];
   
+  let does_not_exist = &v[100];    // panic!
+  let does_not_exist = v.get(100); // No panic. Returns None.
+  ```
+
+- A nice trick is to make a vector of an enum type when you need values of different types in a vector:
+
+  ```
+  enum MyEnum {
+  	Int(i32),
+  	Bool(bool),
+  	String(String),
+  }
+  
+  // Vectors elements must all be the same type
+  let row = vec![
+  	MyEnum::Int(10),
+  	MyEnum::Int(5),
+  	MyEnum::Bool(true),
+  	MyEnum::String(String::from("Hi")),
+  	MuEnum::String(String::from("Bye")),
+  ];
+  ```
+
+Strings
+
+- Referring to the `String` type (as apposed to the `&str` slice)
+
+- A string is a collection of bytes, therefore it falls under this category
+
+- Remember that a string literal is a slice, not a `String`. These are equivalent:
+
+  ```rust
+  // The to_string() method is available to any type that implements
+  // the Display trait.
+  let s1 = "This is a literal".to_string();
+  let s2 = String::from("This is a literal"); 
+  ```
+
+- Like a vector, a `String` can be appended to.
+
+- The `+` operator can concatenate strings. Under the hood it's using the `add()` method, which takes ownership of the argument on the left.
+
+  ```rust
+  let s1 = String::from("Hello");
+  let s2 = String::from(", World!");
+  let s3 = s1 + &s2; // Notice the second argument is a reference. This line moves s1.
+  ```
+
+  The `add` method signature is `fn add(self, s: &str) -> String`
+
+
+
+Hash Maps
 
 ### Macros
 
@@ -311,126 +612,3 @@ let mut greeting = "hello";
 greeting = greeting.len(); // Throws an error
 ```
 
-### Slices
-
-Work similarly to slices in Golang. 
-
-References part of a string
-
-`&my_str[5..12] // slice from index 5 through 11 `
-
-`&my_str[..12] // slice from beginning of string through index 11`
-
-`&my_str[5..] // slice from index 5 through end of string`
-
-`&my_str[..] // slice of entire string`
-
-You can also use variables for the bounds:
-
-```rust
-let my_str = String::from("Hello, slices!");
-let len = my_str.len();
-
-let slice = &my_str[7..len]; // slice containing "slices!"
-```
-
-String literals are slices. String literal type keyword is `str`, so a function can receive/return a slice by using the syntax `&str`.
-
-Slice definitions for other types look like `&[u32]`, `&[bool]`, etc.
-
-### Structs
-
-Like structs in other languages.
-
-Each struct defined is its own type.
-
-Defining:
-
-```rust
-struct MyStruct {
-	name: String,
-	email: String,
-	age: u32,
-};
-```
-
-Instantiating:
-
-```rust
-let mut instance = MyStruct {
-	name: String::from("Collin"),
-	email: String::fromt("someemail@gmail.com"),
-	age: 100,
-};
-```
-
-Accessing:
-
-```rust
-println!("Hello, {}!", instance.name);
-
-instance.age = instance.age + 1; // This will throw a compiler error if instance is not mutable
-```
-
-Entire instance must be mutable or immutable. You cannot mark only certain fields as mutable.
-
-Shorthand for auto-filling fields with matching function parameters:
-
-```rust
-fn build_user(email: String, username: String) -> User {
-    User {
-        email, 		// Field and parameter have same name
-        username,	// Field and parameter have same name
-        active: true,
-        sign_in_count: 1,
-    }
-}
-```
-
-"Update syntax", copy fields from another struct 
-
-```rust
-let user2 = User {
-	email: String::from("another@example.com"),
-	username: String::from("anotherusername567"),
-	..user1	// Remaining fields will have the same values as those in user1
-};
-```
-
-#### Structs: Methods
-
-Methods can be defined on structs with the `impl` ("implements") block. Methods take `self` as their first argument. Borrowing and ownership work as normal. Methods are called with dot syntax:
-
-```rust
-struct Rectangle {
-    width: u32,
-    height: u32,
-}
-
-impl Rectangle {
-    fn area(&self) -> u32 {
-        self.width * self.height
-    }
-}
-
-// Given a Rectangle rect, area method can be called with rect.area();
-```
-
-#### Structs: Associated Functions
-
-Associated functions are functions in a struct that do not take the `self` parameter, and therefore do not have an instance of the caller scoped. They are called with the double colon `::` syntax:
-
-```rust
-impl Rectangle {
-    fn square(size: u32) -> Rectangle {
-        Rectangle {
-            width: size,
-            height: size,
-        }
-    }
-}
-
-// Called with Rectangle::square(5)
-```
-
-Associated functions are often used as constructors that return a new instance of a the struct. The previous example creates a new Rectangle with equal width and height.
