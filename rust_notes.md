@@ -22,9 +22,13 @@ If you are interested in contributing to this post, it's in a public repository 
 
 *Library crate* - A Crate that contains components that can be used in other projects. Has no `main()` function entry point.
 
+*Lifetime* - The scope for which a reference is valid.
+
 *Method* - A function defined inside of a struct, enum, or trait. First parameter is always `self`. Methods can borrow or take ownership like normal functions.
 
 *Module*s - Let you control the organization, scope, and privacy of paths. Included using `use`
+
+*Monomorphization* - The process of turning generic code into specific code by filling in the concrete types that are used when compiled. The Rust compiler does this to prevent overhead from generics.
 
 *Shadowing* - Using and existing variables name for a new variable of either the same or a different type. Useful for situations where you would normally cast.
 
@@ -47,6 +51,7 @@ If you are interested in contributing to this post, it's in a public repository 
   ```
 
 - For function signatures that take strings or other array-like values, prefer to use slices. 
+
 - Prefer slicing a string over indexing into it. See [Slicing Strings](https://doc.rust-lang.org/book/ch08-02-strings.html#slicing-strings) in the Rust Book for an explanation.
 
 ## Commands
@@ -132,6 +137,125 @@ io::stdin()
 
 
 
+### Collections
+
+Vectors `Vec<T>`
+
+- A list of values of the **same type** stored next to each other in memory.
+
+- Instantiated with `let v: Vec<i32> = Vec::new();`
+
+- Rust can also infer the type during definition with the vec macro: `let v = vec![1, 2, 3];`
+
+- Append values to vectors with the push method: `v.push(5);`. The vector must be mutable to do this.
+
+- For reading, indexing can cause a panic if the index is out of range, or you can use the `get` method which returns an `Option`
+
+  ```rust
+  let v = vec![1, 2, 3, 4, 5];
+  
+  let does_not_exist = &v[100];    // panic!
+  let does_not_exist = v.get(100); // No panic. Returns None.
+  ```
+
+- A nice trick is to make a vector of an enum type when you need values of different types in a vector:
+
+  ```
+  enum MyEnum {
+  	Int(i32),
+  	Bool(bool),
+  	String(String),
+  }
+  
+  // Vectors elements must all be the same type
+  let row = vec![
+  	MyEnum::Int(10),
+  	MyEnum::Int(5),
+  	MyEnum::Bool(true),
+  	MyEnum::String(String::from("Hi")),
+  	MuEnum::String(String::from("Bye")),
+  ];
+  ```
+
+Strings
+
+- Referring to the `String` type (as apposed to the `&str` slice)
+
+- A string is a collection of bytes, therefore it falls under this category
+
+  In fact, is a wrapper of a `Vec<u8>`, and as such can be indexed like a normal vector.
+
+- Remember that a string literal is a slice, not a `String`. These are equivalent:
+
+  ```rust
+  // The to_string() method is available to any type that implements
+  // the Display trait.
+  let s1 = "This is a literal".to_string();
+  let s2 = String::from("This is a literal"); 
+  ```
+
+- Like a vector, a `String` can be appended to.
+
+- The `+` operator can concatenate strings. Under the hood it's using the `add()` method, which takes ownership of the argument on the left.
+
+  ```rust
+  let s1 = String::from("Hello");
+  let s2 = String::from(", World!");
+  let s3 = s1 + &s2; // Notice the second argument is a reference. This line moves s1.
+  ```
+
+  The `add` method signature is `fn add(self, s: &str) -> String`
+
+- The `format!` macro can be used to format a string:
+
+  ```rust
+  let s1 = String::from("Hello");
+  let s2 = String::from(", World!");
+  let s3 = format!("{}{}", s1, s2);
+  ```
+
+  
+
+Hash Maps
+
+- A familiar data structure known by other names such as map or dictionary.
+
+  ```rust
+  // Include
+  use std::collections::HashMap;
+  
+  // Initializing
+  let mut hm = HashMap::new();
+  
+  // Add pairs
+  hm.insert(String::from("Username"), String::from("atrooo"));
+  ```
+
+- All keys must be of the same types, as well as all values. In the previous code block, Rust infers that the type is `HashMap<String, String>`. It could have just as easily been `HashMap<i32, bool>`.
+
+  It can be explicitly defined when initializing, just like any other type:
+
+  ```rust
+  let mut hm: HashMap<String, i32> = HashMap::new();
+  ```
+
+- Hash maps take ownership of values inserted into them.
+
+- Accessing:
+
+  ```rust
+  // Get method
+  let key = String::from("Username");
+  let int: i32 = hm.get(&key);
+  
+  // Or iterate with tuple
+  for (key, value) in &hm {
+  	println!("{}: {}", key, value); // Username: atrooo
+  }
+  ```
+
+  
+
 ### Enumerations (enums)
 
 Values are called *variants*
@@ -213,6 +337,55 @@ The type passed to the generic type parameter `<T>` means that `Some` can hold a
 
 By doing this, rather than allowing each variable to have a `null` state, the compiler can treat variables that have the potential to not be present as different than the regular type. Additionally, the compiler will force the user to handle every variant in the Options before compiling. This prevents attempts to execute code on a missing value.
 
+### Error Handling
+
+- By default, Rust panics when it encounters an error it can't recover from, and *unwinds* back up the backtrace, cleaning up the variables created.
+
+- There is a `panic!` macro for intentionally panicing
+
+- When the `RUST_BACKTRACE` environment variable is set to `1` Rust will output a backtrace to the standard output.
+
+- The `Result` enum can be used to handle errors via it's `Err(E)` variant.
+
+  ```rust
+  let f = File::open("fakefile");
+  
+  // fakefile does not exist
+  let f = match f {
+      Ok(file) => file,
+      Err(error) => panic!("Something went wrong: {:?}", error),
+  };
+  ```
+
+- `Result` has two helper methods, `unwrap` and `expect` to help avoid the boiler plate `match` expression that handles the `Result` variants. `unwrap` will return the value if the `Ok` arm is taken, or panic with the default error message. `expect` does the same thing but allows you to pass your own error message. This code does the same thing as the previous example:
+
+  ```rust
+  let f = File::open("fakefile").expect("Something went wrong.");
+  
+  // let f = File::open("fakefile").unwrap();
+  ```
+
+- Errors can be propagated by returning them
+
+  ```rust
+  let f = File::open("fakefile");
+  
+  let f = match f {
+      Ok(file) => file,
+      Err(error) => return error,
+  };
+  ```
+
+  This leaves it up to the calling function to handle the error.
+
+- The `?` operator is shorthand for accomplishing this same functionality:
+
+  ```rust
+  let f = File::open("fakefile")?
+  ```
+
+- [Guidelines on when to panic](https://doc.rust-lang.org/book/ch09-03-to-panic-or-not-to-panic.html)
+
 ### Expressions
 
 `loop {}`
@@ -251,7 +424,9 @@ By doing this, rather than allowing each variable to have a `null` state, the co
   ```
 
 - Matches are exhaustive. If there is a variant unhandled, the compiler will throw an error.
+
 - Use the `_` placeholder variant to handle unlisted variants. Sort of like a `default` block in a switch statement. Matches any value.
+
 - Patterns are matched in the order they are written. Placing `_` as the first arm would match all inputs.
 
 `if let` 
@@ -294,6 +469,47 @@ Variables
   	5
   }
   ```
+
+
+
+### Generics
+
+- Types or Functions defined with generic parameters:
+
+  ```rust
+  struct Point<T> {
+      x: T,
+      y: T,
+  }
+  
+  // T must have the PartialOrd trait for the
+  // > operation to work on it. Since not every
+  // type can be orders, and thus compared, this
+  // function will throw an error.
+  fn largest(v: Vec<T>) -> T {
+      let largest = v[0];
+      
+      for value in v {
+          if v > largest {
+              largest = v;
+          }
+      }
+  }
+  ```
+
+- Rust will infer the type from the value provided. If you were to pass `x = 5` and `y = 4.0` to the struct in the previous example, it would throw an error because Rust inferred that T should be `i32` from the first value.
+
+
+
+### Keywords
+
+`pub` - Makes item publicly available to other crates.
+
+
+
+### Macros
+
+Suffixed with `!`
 
 
 
@@ -421,134 +637,103 @@ impl Rectangle {
 
 Associated functions are often used as constructors that return a new instance of a the struct. The previous example creates a new Rectangle with equal width and height.
 
-### Collections
 
-Vectors `Vec<T>`
 
-- A list of values of the **same type** stored next to each other in memory.
+### Traits
 
-- Instantiated with `let v: Vec<i32> = Vec::new();`
+- Rusts notion of an interface.
 
-- Rust can also infer the type during definition with the vec macro: `let v = vec![1, 2, 3];`
-
-- Append values to vectors with the push method: `v.push(5);`. The vector must be mutable to do this.
-
-- For reading, indexing can cause a panic if the index is out of range, or you can use the `get` method which returns an `Option`
+- Defining:
 
   ```rust
-  let v = vec![1, 2, 3, 4, 5];
-  
-  let does_not_exist = &v[100];    // panic!
-  let does_not_exist = v.get(100); // No panic. Returns None.
-  ```
-
-- A nice trick is to make a vector of an enum type when you need values of different types in a vector:
-
-  ```
-  enum MyEnum {
-  	Int(i32),
-  	Bool(bool),
-  	String(String),
-  }
-  
-  // Vectors elements must all be the same type
-  let row = vec![
-  	MyEnum::Int(10),
-  	MyEnum::Int(5),
-  	MyEnum::Bool(true),
-  	MyEnum::String(String::from("Hi")),
-  	MuEnum::String(String::from("Bye")),
-  ];
-  ```
-
-Strings
-
-- Referring to the `String` type (as apposed to the `&str` slice)
-
-- A string is a collection of bytes, therefore it falls under this category
-
-  In fact, is a wrapper of a `Vec<u8>`, and as such can be indexed like a normal vector.
-
-- Remember that a string literal is a slice, not a `String`. These are equivalent:
-
-  ```rust
-  // The to_string() method is available to any type that implements
-  // the Display trait.
-  let s1 = "This is a literal".to_string();
-  let s2 = String::from("This is a literal"); 
-  ```
-
-- Like a vector, a `String` can be appended to.
-
-- The `+` operator can concatenate strings. Under the hood it's using the `add()` method, which takes ownership of the argument on the left.
-
-  ```rust
-  let s1 = String::from("Hello");
-  let s2 = String::from(", World!");
-  let s3 = s1 + &s2; // Notice the second argument is a reference. This line moves s1.
-  ```
-
-  The `add` method signature is `fn add(self, s: &str) -> String`
-
-- The `format!` macro can be used to format a string:
-
-  ```rust
-  let s1 = String::from("Hello");
-  let s2 = String::from(", World!");
-  let s3 = format!("{}{}", s1, s2);
-  ```
-
-  
-
-Hash Maps
-
-- A familiar data structure known by other names such as map or dictionary.
-
-  ```rust
-  // Include
-  use std::collections::HashMap;
-  
-  // Initializing
-  let mut hm = HashMap::new();
-  
-  // Add pairs
-  hm.insert(String::from("Username"), String::from("atrooo"));
-  ```
-
-- All keys must be of the same types, as well as all values. In the previous code block, Rust infers that the type is `HashMap<String, String>`. It could have just as easily been `HashMap<i32, bool>`.
-
-  It can be explicitly defined when initializing, just like any other type:
-
-  ```rust
-  let mut hm: HashMap<String, i32> = HashMap::new();
-  ```
-
-- Hash maps take ownership of values inserted into them.
-
-- Accessing:
-
-  ```rust
-  // Get method
-  let key = String::from("Username");
-  let int: i32 = hm.get(&key);
-  
-  // Or iterate with tuple
-  for (key, value) in &hm {
-  	println!("{}: {}", key, value); // Username: atrooo
+  pub trait Summary {
+      fn summarize(&self) -> String;
   }
   ```
 
+- Cannot implement external traits on external types. Either the trait or the type must be local to your crate.
+
+- Unlike a regular interface, traits can have default behavior defined on them:
+
+  ```rust
+  pub trait Summary {
+      fn summarize(&self) -> String {
+          String::from("(Read more...)")
+      }
+  }
+  ```
+
+- The default implementation can be overwritten. In such a case, the default implementation cannot be used.
+
+- Traits be used as parameters:
+
+  ```rust
+  pub fn notify(item: &impl Summary) {
+      println!("Breaking news! {}", item.summarize());
+  }
   
+  // Long form ("trait bound")
+  pub fn notify<T: Summary>(item: &T) {
+      println!("Breaking news! {}", item.summarize());
+  }
+  ```
 
-### Macros
+  This function can take any type that implements the Summary trait as a parameter.
 
-Suffixed with `!`
+  The "trait bound" syntax allows you to use pass parameters of different types on function that take more than one parameter, so long as they both implement the trait.
+
+- Parameter that allows multiple kinds of traits with the `+` operation:
+
+  ```rust
+  pub fn notify(item: &(impl Summary + Display)) {
+  
+  // trait bound
+  pub fn notify<T: Summary + Display>(item: &T) {
+  ```
+
+- Since this syntax can get really verbose, there is a `where` clause that makes things neater:
+
+  ```rust
+  fn some_function<T, U>(t: &T, u: &U) -> impl Clone
+  	where T: Display + Clone,
+  		  U: Clone + Debug
+  {
+  ```
+
+- Trait can be a return type. Notice the use of the `Clone` trait as the return type in the previous code block.
 
 ### Types
 
 [Data Types - The Rust Programming Language (rust-lang.org)](https://doc.rust-lang.org/book/ch03-02-data-types.html)
 
 ## Key Rust Concepts
+
+### Lifetimes
+
+[Validating References with Lifetimes - The Rust Programming Language (rust-lang.org)](https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html)
+
+Every reference in Rust has a lifetime, "which is the scope for which that reference is valid".
+
+Meant to prevent dangling references.
+
+Rust has a *borrow check* meant to check that all borrows are valid and don't attempt to use any values that are out of scope. 
+
+**Lifetime annotations** allow you to constrain values in function to certain lifetimes. The reason this is needed is that if a function takes two borrow parameters, and then returns a borrowed value, it doesn't know whether the value it's returning is still in scope. If you constrain both parameters and the return type to have the same lifetime, the compiler can then tell whether the function is valid.
+
+Syntax for lifetime annotations:
+
+```rust
+// lifetime 'a
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+```
+
+
 
 ### Ownership
 
