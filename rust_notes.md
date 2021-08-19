@@ -54,6 +54,12 @@ If you are interested in contributing to this post, it's in a public repository 
 
 - Prefer slicing a string over indexing into it. See [Slicing Strings](https://doc.rust-lang.org/book/ch08-02-strings.html#slicing-strings) in the Rust Book for an explanation.
 
+- If an external function is needed, include its parent and call it with `parent::function();` to disambiguate it from local functions.
+
+- "Using primitive values when a complex type would be more appropriate is an anti-pattern known as *primitive obsession*." - Rust Book
+
+- Place function tests in the same file as where they are defined, in the `tests`  module.
+
 ## Commands
 
 - Compile 
@@ -636,6 +642,36 @@ impl Rectangle {
 ```
 
 Associated functions are often used as constructors that return a new instance of a the struct. The previous example creates a new Rectangle with equal width and height.
+
+
+
+### Tests
+
+- Run with `cargo test`
+
+- Place tests in a `tests` module
+
+- Mark the module with the `#[cfg(test)]` annotation, and each test function within it with `#[test]`
+
+  ```rust
+  #[cfg(test)]
+  mod tests {
+      use super::*;
+      
+          #[test]
+      fn one_result() {
+          let query = "duct";
+          let contents = "\
+  Rust:
+  safe, fast, productive.
+  Pick three.";
+  
+          assert_eq!(vec!["safe, fast, productive."], search(query, contents));
+      }
+  }
+  ```
+
+  `super` refers to the module directly above `self` in the path. The line `use super::*` is importing all sibling crates.
 
 
 
