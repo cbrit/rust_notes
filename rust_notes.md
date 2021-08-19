@@ -1,6 +1,6 @@
 ## Contributing
 
-If you are interested in contributing to this post, it's in a public repository in [my GitHub](https://github.com/cbrit/rust_notes/tree/main). If you do decide to contribute, keep in mind this is supposed to be a concise summary and reference, and it is not a rewrite of the Rust Book. Thanks!
+If you are interested in contributing to this post, it's in a public repository in [my GitHub](https://github.com/cbrit/rust_notes/tree/main). If you do decide to contribute, keep in mind this is supposed to be a concise summary and reference, and it is not a rewrite of the Rust Book, even though it contains many references to quotations or code blocks from it. Thanks!
 
 ## Resources
 
@@ -16,13 +16,19 @@ If you are interested in contributing to this post, it's in a public repository 
 
 *Borrow* - When a function is passed a value by reference. Ownership is not taken, and the value cannot be changed unless the parameter is `&mut`.
 
+*Closure* - An anonymous function that can be saved in a variable. Similar to a C# lambda.
+
 *Crate* - A tree of modules that produces a library or executable.
 
 *Expression* - Evaluates to/returns a value
 
+*Iterator Adaptor* - A method defined the `Iterator` trait for changing one `Iterator` kind to another.
+
 *Library crate* - A Crate that contains components that can be used in other projects. Has no `main()` function entry point.
 
 *Lifetime* - The scope for which a reference is valid.
+
+*Memoizatoin* - Also called *lazy evaluation*. The pattern of storing a closure in a struct, only evaluating the result at the time it is needed, and then caching the result for future use.
 
 *Method* - A function defined inside of a struct, enum, or trait. First parameter is always `self`. Methods can borrow or take ownership like normal functions.
 
@@ -36,7 +42,7 @@ If you are interested in contributing to this post, it's in a public repository 
 
 *Trait* - Similar to an interface. Abstracts the types that implement the trait.
 
-
+*Zero-cost abstractions* - An abstraction Rust provides that introduces no additional overhead. For example, an `Iterator` over using a `for` loop.
 
 ## Conventions
 
@@ -142,6 +148,101 @@ io::stdin()
 ```
 
 
+
+### Closures
+
+Closures are anonymous functions that can be saved in a variable.
+
+Syntax:
+
+```rust
+let x = 5;
+
+let add_one = |num| {
+	num + 1
+};
+
+// Other options
+// let add_one = |num| num + 1;
+
+// Almost never necessary annotate types because the compiler can infer them and
+// closures are not exposed to a public API. However, you can do it:
+// let add_one = |num: i32| -> i32 {...} 
+
+add_one(x); // returns 6
+```
+
+- The Rust compiler will infer the parameter types from the first usage. If subsequent calls to the closure use different parameter types, the compiler will throw an error.
+
+- Rust considered each closure to have it's own unique anonymous type, even if the signatures are the same. 
+
+- In order to  have a closure in a struct, you need a type annotation. This is because structs must know what types their fields are.
+
+- For closure fields, we use generics and trait bounds to define the closure type.
+
+- `Fn` traits are defined in the standard library. They are `Fn`, `FnOnce`, and `FnMut`
+
+- Example of a struct with a closure field:
+
+  ```rust
+  // "where T is a closure that takes an u32 and returns an u32"
+  struct Cacher<T>
+  where
+      T: Fn(u32) -> u32,
+  {
+      calculation: T,
+      value: Option<u32>,
+  }
+  ```
+
+  The `value` field behavior:
+
+  ```rust
+  impl<T> Cacher<T>
+  where
+      T: Fn(u32) -> u32,
+  {
+      fn new(calculation: T) -> Cacher<T> {
+          Cacher {
+              calculation,
+              value: None,
+          }
+      }
+  
+      fn value(&mut self, arg: u32) -> u32 {
+          match self.value {
+              Some(v) => v,
+              None => {
+                  let v = (self.calculation)(arg);
+                  self.value = Some(v);
+                  v
+              }
+          }
+      }
+  }
+  ```
+
+  This pattern accomplishes *memoization* or *lazy evaluation* (see the terms section). When a developer needs to the resulting value from the closure, they will use the `value` fields, which executes the closure if it hasn't been done before, otherwise, returns the cached result.
+
+  Beware, this struct will store the cached value of the first result with whatever argument it is given. Future attempts to pass a different argument will result in the same value as the first.
+
+  We could get around this by making `value` a hash map, where the arguments are keys and the resulting values are the hash map values.
+
+- Examples like the previous one can be improved by using Generic parameters and return types.
+
+- Unlike functions, closures can capture their environment and access variable in the scope in which they are defined.
+
+  This behavior means closures are not suitable for every scenario, because capturing the environment comes with memory overhead.
+
+  >Closures can capture values from their environment in three ways, which directly map to the three ways a function can take a parameter: taking ownership, borrowing mutably, and borrowing immutably. These are encoded in the three `Fn` traits as follows:
+  >
+  >- `FnOnce` consumes the variables it captures from its enclosing scope, known as the closure’s *environment*. To consume the captured variables, the closure must take ownership of these variables and move them into the closure when it is defined. The `Once` part of the name represents the fact that the closure can’t take ownership of the same variables more than once, so it can be called only once.
+  >- `FnMut` can change the environment because it mutably borrows values.
+  >- `Fn` borrows values from the environment immutably.
+  >
+  >Rust Book Chapter 13
+
+- The Rust compiler will infer which `Fn` traits are implemented based on the usage of the captured variables.
 
 ### Collections
 
@@ -478,6 +579,54 @@ Variables
 
 
 
+### Iterators
+
+- Similar to iterators in any other language that has them. They return sequences of data one at a time.
+
+- Iterators must implement the `Iterator` trait by implementing the following items (from standard library definition):
+
+  ```rust
+  pub trait Iterator {
+      type Item;
+  
+      fn next(&mut self) -> Option<Self::Item>;
+  
+      // methods with default implementations elided
+      // ...
+  }
+  ```
+
+  For example
+
+  ```rust
+  struct Counter {
+      count: u32,
+  }
+  
+  impl Counter {
+      fn new() -> Counter {
+          Counter { count: 0 }
+      }
+  }
+  
+  impl Iterator for Counter {
+      type Item = u32;
+  
+      fn next(&mut self) -> Option<Self::Item> {
+          if self.count < 5 {
+              self.count += 1;
+              Some(self.count)
+          } else {
+              None
+          }
+      }
+  }
+  ```
+
+- *Iterator adaptors* change one iterator into another. A common one used in Rust is `filter`
+- The `filter` method on an iterator takes a closure that performs a check on each item from the iterator and returns a `bool`. If the resulting value is `true`, the item is included in the resulting iterator from the `filter` method. If the closure result is `false`, the item is not included in the resulting iterator.
+- 
+
 ### Generics
 
 - Types or Functions defined with generic parameters:
@@ -509,6 +658,8 @@ Variables
 
 ### Keywords
 
+`move` - Force ownership of a captured variable (move from reference to value). Used with closures. 
+
 `pub` - Makes item publicly available to other crates.
 
 
@@ -517,7 +668,13 @@ Variables
 
 Suffixed with `!`
 
+`panic!` - Panics with the provided error message.
 
+`println!` - Writes to stdout
+
+`println!` - Writes to stderr
+
+`vec!` - shorthand for a `Vec<T>` constructor. 
 
 ### Slices
 
@@ -741,6 +898,9 @@ Associated functions are often used as constructors that return a new instance o
 ### Types
 
 [Data Types - The Rust Programming Language (rust-lang.org)](https://doc.rust-lang.org/book/ch03-02-data-types.html)
+
+- Because primitive types have a known size, rust will store them on the stack. Passing them between scopes creates a copy.
+- Types of an unknown size (like String) will be stored on the heap. Passing them between scopes is either accomplished by moving ownership or borrowing with a reference.
 
 ## Key Rust Concepts
 
